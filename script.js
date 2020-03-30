@@ -1,5 +1,5 @@
 window.onload = init;
-let canvas,context,imageHeight,imageWidth,maxIters,xMininum,yMinimum,scaleFactor;
+let canvas,context,imageHeight,imageWidth,maxIters,xMininum,yMinimum,scaleFactor,rand;
 
 const colorMap = [
   "66,30,15",
@@ -19,6 +19,16 @@ const colorMap = [
   "153, 87, 0",
   "106, 52, 3"
 ];
+const juliaVals = [
+  [0.285,0],
+  [0.285,0.01],
+  [0.45,0.1428],
+  [-0.70176,-0.3842],
+  [-0.835,-0.2321],
+  [-0.8,0.156],
+  [-0.7269,+ 0.1889],
+  [0,-0.8]
+];
 
 function init(){
   canvas = document.getElementById("MandelCanv");
@@ -31,9 +41,10 @@ function init(){
   xCent = -0.5; //-0.5
   yCent = 0; //0
 
-  scaleFactor = 400;
+  scaleFactor = 200;
 
-  maxIters = 200;
+  maxIters = 100;
+  rand = Math.floor(Math.random()*juliaVals.length);
   draw();
 }
 
@@ -65,7 +76,8 @@ function draw(){
       let cX = xyToComplex(x,y)[0];
       let cY = xyToComplex(x,y)[1];
 
-      let iterations = findIterations(cX, cY, maxIters);
+      //let iterations = mandelIterations(cX, cY, maxIters);
+      let iterations = juliaSet(maxIters,x,y);
       let num = Math.sin(iterations);
       //coloring c:
       let hue = scale(num,-1,1,360,0);
@@ -79,22 +91,40 @@ function draw(){
       }
 
       context.fillStyle = `hsl(${hue},${sat},${light})`;
-      context.fillStyle = `rgb(${rgb})`
+      //context.fillStyle = `rgb(${rgb})`
       context.fillRect(x,y,1,1);
     }
   }
 }
 
-function findIterations(centX,centY,maxIters){
+function mandelIterations(centX,centY,max){
   let i = 0;
   let zR = 0, zI = 0;
-  while(i < maxIters && Math.pow(zR,2) + Math.pow(zI,2) < 4){
+  while(i < max && Math.pow(zR,2) + Math.pow(zI,2) < 4){
     tempVal = Math.pow(zR,2) - Math.pow(zI,2) + centX;
     zI = 2 * zR * zI + centY;
     zR = tempVal;
     i++;
   }
-  if(i == maxIters){
+  if(i == max){
+    return i;
+  }else{
+    return (i + 1) - Math.log2(Math.log2(Math.sqrt(Math.pow(zR,2)+Math.pow(zI,2))) / Math.log(2));
+  };
+}
+
+function juliaSet(max,x,y){
+  let i = 0;
+  let escapeRad = 4;
+  let zR = scale(x,0,imageWidth,-escapeRad,escapeRad);
+  let zI = scale(y,0,imageHeight,-escapeRad,escapeRad);
+  while(i < max && Math.pow(zR,2) + Math.pow(zI,2) < Math.pow(escapeRad,2)){
+    tempVal = Math.pow(zR,2) - Math.pow(zI,2) + juliaVals[rand][0];
+    zI = 2 * zR * zI + juliaVals[rand][1];
+    zR = tempVal;
+    i++;
+  }
+  if(i == max){
     return i;
   }else{
     return (i + 1) - Math.log2(Math.log2(Math.sqrt(Math.pow(zR,2)+Math.pow(zI,2))) / Math.log(2));
