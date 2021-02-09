@@ -1,6 +1,8 @@
 window.onload = init;
 let canvas,context,imageHeight,imageWidth,maxIters,xMininum,yMinimum,scaleFactor,rand;
+let histMap = new Map();
 
+const lerp = (x, y, a) => x * (1 - a) + y * a;
 const colorMap = [
   "66,30,15",
   "25,7,26",
@@ -43,8 +45,7 @@ function init(){
 
   scaleFactor = 200;
 
-  maxIters = 100;
-  rand = Math.floor(Math.random()*juliaVals.length);
+  maxIters = 80;
   draw();
 }
 
@@ -54,6 +55,7 @@ function xyToComplex(x,y){
 
 function mouseClickHandler(event){
   //Update center
+
   const rect = canvas.getBoundingClientRect();
   const mouseX = event.clientX - rect.left;
   const mouseY = event.clientY - rect.top;
@@ -69,29 +71,45 @@ function mouseClickHandler(event){
 }
 
 function draw(){
+  let vals = [];
   context.fillStyle = "black"
   context.fillRect(0,0,imageWidth,imageHeight)
+  rand = Math.floor(Math.random()*juliaVals.length);
+  //First let's make a histogram for our colors
   for(let y = 0; y < imageHeight; y++){
     for(let x = 0; x < imageWidth; x++){
-      let cX = xyToComplex(x,y)[0];
-      let cY = xyToComplex(x,y)[1];
-
+      //let cX = xyToComplex(x,y)[0];
+      //let cY = xyToComplex(x,y)[1];
       //let iterations = mandelIterations(cX, cY, maxIters);
       let iterations = juliaSet(maxIters,x,y);
-      let num = Math.sin(iterations);
+      vals[x+":"+y] = iterations;
+      if(iterations < maxIters){
+        let curr = histMap.get(iterations);
+        histMap.set(Math.floor(iterations), (curr == undefined ? 1 : curr+1))
+      };
+    }
+  }
+  let tot = 0;
+  for(const [key, val] of histMap.entries()){
+    tot+=val
+  }
+  let hues = [], c = 0;
+  for(let i = 0; i < maxIters; i++){
+    c += (histMap.get(i) == undefined ? 0 : histMap.get(i)) / tot;
+    hues.push(c);
+  }
+  hues.push(c);
+  console.log(vals)
+
+  for(let y = 0; y < imageHeight; y++){
+    for(let x = 0; x < imageWidth; x++){
       //coloring c:
-      let hue = scale(num,-1,1,360,0);
+      let its = vals[x+":"+y];
+      let h =  360-Math.floor(360 * lerp(hues[Math.floor(its)],hues[Math.ceil(its)], its%1));
       let sat = '100%';
-      let light = '40%';
+      let light = its < maxIters ? '40%' : '0%';
 
-      let rgb = colorMap[Math.floor(scale(num,-1,1,0,15))];
-      if(iterations >= maxIters || iterations <= 0){
-        rgb = "0,0,0"
-        light = "0%";
-      }
-
-      context.fillStyle = `hsl(${hue},${sat},${light})`;
-      //context.fillStyle = `rgb(${rgb})`
+      context.fillStyle = `hsl(${h},${sat},${light})`;
       context.fillRect(x,y,1,1);
     }
   }
@@ -115,12 +133,12 @@ function mandelIterations(centX,centY,max){
 
 function juliaSet(max,x,y){
   let i = 0;
-  let escapeRad = 4;
+  let escapeRad = 2;
   let zR = scale(x,0,imageWidth,-escapeRad,escapeRad);
   let zI = scale(y,0,imageHeight,-escapeRad,escapeRad);
   while(i < max && Math.pow(zR,2) + Math.pow(zI,2) < Math.pow(escapeRad,2)){
-    tempVal = Math.pow(zR,2) - Math.pow(zI,2) + juliaVals[rand][0];
-    zI = 2 * zR * zI + juliaVals[rand][1];
+    tempVal = Math.pow(zR,2) - Math.pow(zI,2) + juliaVals[1][0];
+    zI = 2 * zR * zI + juliaVals[1][1];
     zR = tempVal;
     i++;
   }
